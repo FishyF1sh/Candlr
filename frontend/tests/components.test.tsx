@@ -116,14 +116,6 @@ describe('MoldControls', () => {
     expect(screen.getByText(/maximum height/i)).toBeInTheDocument();
     expect(screen.getByText(/relief depth/i)).toBeInTheDocument();
   });
-
-  it('renders toggle options', () => {
-    const onSettingsChange = vi.fn();
-    render(<MoldControls onSettingsChange={onSettingsChange} />);
-
-    expect(screen.getByText(/registration marks/i)).toBeInTheDocument();
-    expect(screen.getByText(/pouring channel/i)).toBeInTheDocument();
-  });
 });
 
 describe('ProcessingIndicator', () => {

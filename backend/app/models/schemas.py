@@ -34,8 +34,6 @@ class MoldGenerationInput(BaseModel):
     max_width: float = Field(default=100.0, ge=20.0, le=300.0, description="Maximum width in mm")
     max_height: float = Field(default=100.0, ge=20.0, le=300.0, description="Maximum height in mm")
     max_depth: float = Field(default=30.0, ge=10.0, le=100.0, description="Maximum depth in mm")
-    include_registration_marks: bool = Field(default=True, description="Add corner registration marks")
-    include_pouring_channel: bool = Field(default=True, description="Add pouring channel")
 
 
 class PromptTemplate(BaseModel):

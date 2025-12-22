@@ -79,14 +79,12 @@ async def generate_mold(input_data: MoldGenerationInput):
     Generate an STL mold file from a depth map with specified parameters.
     """
     try:
-        stl_data = mesh_service.generate_mold_stl(
+        stl_data = mesh_service.generate_mold_stl_fast(
             base64_depth_map=input_data.depth_map,
             wall_thickness=input_data.wall_thickness,
             max_width=input_data.max_width,
             max_height=input_data.max_height,
             max_depth=input_data.max_depth,
-            include_registration_marks=input_data.include_registration_marks,
-            include_pouring_channel=input_data.include_pouring_channel,
         )
         return Response(
             content=stl_data,

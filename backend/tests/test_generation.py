@@ -50,8 +50,6 @@ class TestGenerateMoldEndpoint:
                 "max_width": 100.0,
                 "max_height": 100.0,
                 "max_depth": 30.0,
-                "include_registration_marks": True,
-                "include_pouring_channel": True,
             },
         )
 

@@ -3,8 +3,6 @@ export interface MoldSettings {
   maxWidth: number;
   maxHeight: number;
   maxDepth: number;
-  includeRegistrationMarks: boolean;
-  includePouringChannel: boolean;
 }
 
 export interface PromptInfo {
@@ -48,6 +46,4 @@ export const DEFAULT_MOLD_SETTINGS: MoldSettings = {
   maxWidth: 100,
   maxHeight: 100,
   maxDepth: 30,
-  includeRegistrationMarks: true,
-  includePouringChannel: true,
 };

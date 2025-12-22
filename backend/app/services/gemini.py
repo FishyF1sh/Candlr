@@ -103,6 +103,7 @@ CRITICAL REQUIREMENTS:
    - Ensure the subject has good 3D depth variation
    - Smooth out noise or artifacts
    - Ideally with an orthogonal view rather than perspective
+   - No perspective, i.e., the image should look like it's from an orthogonal view without perspective distortion
 
 Output a clean, high-resolution, high-contrast image of the extracted subject."""
 
@@ -119,7 +120,9 @@ CRITICAL Style requirements:
 - Smooth surfaces that will release cleanly from a silicone mold
 - Avoid thin or delicate details that won't work in wax
 - Centered composition with clean, simple background
-- Professional quality with no noise or artifacts"""
+- Professional quality with no noise or artifacts
+- The image will be used to derive a depth map from it
+- DO NOT GENERATE AN IMAGE OF A MOLD but rather of the subject itself"""
 
     def _get_depth_map_prompt(self) -> str:
         """Get the prompt for depth map generation."""
@@ -154,7 +157,7 @@ Output ONLY a clean, high-resolution, noise-free grayscale depth map image."""
             },
             "generate_image": {
                 "prompt": self._get_generate_image_prompt("{user_prompt}"),
-                "model": self.IMAGE_GEN_MODEL,
+                "model": self.CONTENT_MODEL,
             },
             "create_depth_map": {
                 "prompt": self._get_depth_map_prompt(),
@@ -235,6 +238,7 @@ Output ONLY a clean, high-resolution, noise-free grayscale depth map image."""
     async def generate_image_from_prompt(self, user_prompt: str) -> ImageResult:
         """
         Generate an image from a text prompt, optimized for candle mold creation.
+        Uses Gemini's image generation capabilities.
         """
         self._ensure_initialized()
 
@@ -246,25 +250,26 @@ Output ONLY a clean, high-resolution, noise-free grayscale depth map image."""
         try:
             from google.genai import types
 
-            response = await self.client.aio.models.generate_images(
-                model=self.IMAGE_GEN_MODEL,
-                prompt=prompt,
-                config=types.GenerateImagesConfig(
-                    number_of_images=1,
-                    aspect_ratio="1:1",
+            # Use Gemini model with image output modality
+            response = await self.client.aio.models.generate_content(
+                model=self.CONTENT_MODEL,
+                contents=[types.Content(parts=[types.Part(text=prompt)])],
+                config=types.GenerateContentConfig(
+                    response_modalities=["IMAGE", "TEXT"],
                 ),
             )
 
-            if response.generated_images:
-                image_bytes = response.generated_images[0].image.image_bytes
-                result_image = Image.open(io.BytesIO(image_bytes))
-                self._log_image(result_image, 1, "generated_raw")
+            if response.candidates and response.candidates[0].content.parts:
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, "inline_data") and part.inline_data:
+                        result_image = Image.open(io.BytesIO(part.inline_data.data))
+                        self._log_image(result_image, 1, "generated_raw")
 
-                return ImageResult(
-                    image_base64=self._encode_image(result_image),
-                    prompt_used=prompt,
-                    model_used=self.IMAGE_GEN_MODEL,
-                )
+                        return ImageResult(
+                            image_base64=self._encode_image(result_image),
+                            prompt_used=prompt,
+                            model_used=self.CONTENT_MODEL,
+                        )
 
         except Exception as e:
             raise ValueError(f"Failed to generate image from prompt: {e}")
@@ -307,12 +312,9 @@ Output ONLY a clean, high-resolution, noise-free grayscale depth map image."""
             if response.candidates and response.candidates[0].content.parts:
                 for part in response.candidates[0].content.parts:
                     if hasattr(part, "inline_data") and part.inline_data:
-                        # Post-process the depth map for quality
+                        # Convert to grayscale depth map
                         depth_image = Image.open(io.BytesIO(part.inline_data.data)).convert("L")
                         self._log_image(depth_image, 5, "depth_map_raw")
-
-                        depth_image = self._smooth_depth_map(depth_image)
-                        self._log_image(depth_image, 7, "depth_map_smoothed")
 
                         return ImageResult(
                             image_base64=self._encode_image(depth_image),
@@ -344,6 +346,36 @@ Output ONLY a clean, high-resolution, noise-free grayscale depth map image."""
 
         return Image.fromarray(result.astype(np.uint8))
 
+    def _upscale_to_4k(self, image: Image.Image, min_size: int = 3840) -> Image.Image:
+        """
+        Upscale image to at least 4K resolution using LANCZOS resampling.
+
+        Args:
+            image: PIL Image to upscale
+            min_size: Minimum size for the longest edge (default 3840 for 4K)
+
+        Returns:
+            Upscaled PIL Image, or original if already >= min_size
+        """
+        width, height = image.size
+        longest_edge = max(width, height)
+
+        if longest_edge >= min_size:
+            print(f"[Upscale] Image already {width}x{height}, no upscaling needed")
+            return image
+
+        # Calculate scale factor to reach min_size on longest edge
+        scale_factor = min_size / longest_edge
+        new_width = int(width * scale_factor)
+        new_height = int(height * scale_factor)
+
+        print(f"[Upscale] Scaling from {width}x{height} to {new_width}x{new_height} (factor: {scale_factor:.2f}x)")
+
+        # Use LANCZOS for high-quality upscaling (best for depth maps with smooth gradients)
+        upscaled = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+        return upscaled
+
     def _generate_simple_depth_map(self, image: Image.Image, original_prompt: str) -> ImageResult:
         """Fallback: generate a depth map based on luminance with smoothing."""
         import numpy as np
@@ -364,10 +396,14 @@ Output ONLY a clean, high-resolution, noise-free grayscale depth map image."""
         result = Image.fromarray(smoothed.astype(np.uint8))
         self._log_image(result, 6, "depth_map_fallback_smoothed")
 
+        # Upscale to 4K if needed
+        result = self._upscale_to_4k(result)
+        self._log_image(result, 7, "depth_map_fallback_4k")
+
         return ImageResult(
             image_base64=self._encode_image(result),
             prompt_used=f"[FALLBACK - Luminance-based depth map]\n\nOriginal prompt:\n{original_prompt}",
-            model_used="Local processing (grayscale + gaussian smoothing)",
+            model_used="Local processing (grayscale + gaussian smoothing + 4K upscale)",
         )
 
 

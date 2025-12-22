@@ -97,8 +97,6 @@ export async function generateMold(
       max_width: settings.maxWidth,
       max_height: settings.maxHeight,
       max_depth: settings.maxDepth,
-      include_registration_marks: settings.includeRegistrationMarks,
-      include_pouring_channel: settings.includePouringChannel,
     }),
   });
 
