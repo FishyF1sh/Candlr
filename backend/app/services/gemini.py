@@ -108,21 +108,44 @@ CRITICAL REQUIREMENTS:
 Output a clean, high-resolution, high-contrast image of the extracted subject."""
 
     def _get_generate_image_prompt(self, user_prompt: str) -> str:
-        """Get the prompt for image generation."""
-        return f"""Create a HIGH RESOLUTION (4K), clear, well-defined image suitable for a decorative candle mold:
+        """Get the prompt for image generation optimized for candle mold creation.
+
+        This prompt combines requirements from both image generation and subject extraction,
+        so the generated image is already optimized for depth map creation without needing
+        a separate extraction step.
+        """
+        return f"""Create a HIGH RESOLUTION (4K) image of the following subject, optimized for creating a decorative candle mold:
 
 Subject: {user_prompt}
 
-CRITICAL Style requirements:
-- High resolution with crisp details
-- High contrast with clear, sharp edges
-- Strong depth and dimensionality with clear foreground/background separation
-- Smooth surfaces that will release cleanly from a silicone mold
-- Avoid thin or delicate details that won't work in wax
-- Centered composition with clean, simple background
-- Professional quality with no noise or artifacts
-- The image will be used to derive a depth map from it
-- DO NOT GENERATE AN IMAGE OF A MOLD but rather of the subject itself"""
+CRITICAL REQUIREMENTS:
+
+1. IMAGE QUALITY:
+   - High resolution (4K) with crisp, clear details
+   - Professional quality with NO noise or artifacts
+   - High contrast with well-defined edges
+
+2. COMPOSITION:
+   - Center the subject in the frame
+   - Pure white or very light, clean background
+   - Use an ORTHOGONAL view (no perspective distortion) - as if photographed straight-on
+   - NO shadows, NO dramatic lighting - use flat, even illumination
+
+3. SUBJECT OPTIMIZATION FOR MOLD MAKING:
+   - Smooth surfaces that will release cleanly from a silicone mold
+   - Simplify overly complex or thin details that won't translate to a physical mold
+   - Ensure good 3D depth variation - the subject should have clear foreground/background separation
+   - Enhance surface textures and details that will look good as a relief
+   - Crisp, well-defined edges around the subject
+
+4. WHAT TO AVOID:
+   - DO NOT generate an image of a mold - generate the subject itself
+   - NO thin or delicate details that won't work in wax
+   - NO perspective distortion
+   - NO shadows or complex lighting
+   - NO busy or textured backgrounds
+
+The image will be used to derive a depth map for 3D mold generation."""
 
     def _get_depth_map_prompt(self) -> str:
         """Get the prompt for depth map generation."""
