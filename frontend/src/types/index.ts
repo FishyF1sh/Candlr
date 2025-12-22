@@ -3,6 +3,9 @@ export interface MoldSettings {
   maxWidth: number;
   maxHeight: number;
   maxDepth: number;
+  wickEnabled: boolean;
+  wickDiameter: number;
+  wickLength: number;
 }
 
 export interface PromptInfo {
@@ -46,4 +49,7 @@ export const DEFAULT_MOLD_SETTINGS: MoldSettings = {
   maxWidth: 100,
   maxHeight: 100,
   maxDepth: 30,
+  wickEnabled: true,
+  wickDiameter: 1.5,
+  wickLength: 10,
 };

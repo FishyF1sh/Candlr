@@ -54,6 +54,55 @@ class MeshService:
 
         return trimesh.Trimesh(vertices=vertices, faces=faces)
 
+    def _find_wick_position(
+        self,
+        depth_map: np.ndarray,
+        scale_xy: float,
+        scale_z: float,
+        search_radius_ratio: float = 0.3,
+    ) -> tuple:
+        """
+        Find the best position for the wick hole.
+        Looks for a high z-value point near the center of the depth map.
+
+        Args:
+            depth_map: The depth map array
+            scale_xy: Scale factor for x/y coordinates
+            scale_z: Scale factor for z coordinates
+            search_radius_ratio: How far from center to search (as ratio of image size)
+
+        Returns:
+            (x, y, z) position for the wick in mesh coordinates
+        """
+        h, w = depth_map.shape
+        center_y, center_x = h // 2, w // 2
+
+        # Define search region around center
+        search_radius_y = int(h * search_radius_ratio)
+        search_radius_x = int(w * search_radius_ratio)
+
+        y_min = max(0, center_y - search_radius_y)
+        y_max = min(h, center_y + search_radius_y)
+        x_min = max(0, center_x - search_radius_x)
+        x_max = min(w, center_x + search_radius_x)
+
+        # Extract search region
+        search_region = depth_map[y_min:y_max, x_min:x_max]
+
+        # Find the highest point in the search region
+        local_y, local_x = np.unravel_index(np.argmax(search_region), search_region.shape)
+
+        # Convert back to global coordinates
+        best_y = y_min + local_y
+        best_x = x_min + local_x
+        best_z = depth_map[best_y, best_x] * scale_z
+
+        # Convert to mesh coordinates
+        mesh_x = best_x * scale_xy
+        mesh_y = best_y * scale_xy
+
+        return mesh_x, mesh_y, best_z
+
     def generate_mold_stl_fast(
         self,
         base64_depth_map: str,
@@ -61,6 +110,9 @@ class MeshService:
         max_width: float = 100.0,
         max_height: float = 100.0,
         max_depth: float = 30.0,
+        wick_enabled: bool = True,
+        wick_diameter: float = 3.0,
+        wick_length: float = 50.0,
     ) -> bytes:
         """
         Fast STL mold generation using vectorized numpy operations.
@@ -207,12 +259,37 @@ class MeshService:
             print(f"[Mesh] Walls boolean failed: {e}")
             walls = None
 
+        # Create wick hole (cylinder that will create a hole for the wick)
+        wick = None
+        if wick_enabled:
+            # Find the best position for the wick (high z-value near center)
+            wick_x, wick_y, wick_z = self._find_wick_position(depth_map, scale_xy, scale_z)
+
+            # Create a cylinder for the wick
+            # The cylinder goes from below the base plate to above the relief surface
+            wick_bottom_z = -wall_thickness - 1  # Below base plate
+            wick_top_z = min(wick_z + wick_length, wall_top_z)  # Up to wick length or wall top
+
+            wick_height = wick_top_z - wick_bottom_z
+            wick_center_z = (wick_bottom_z + wick_top_z) / 2
+
+            wick = trimesh.creation.cylinder(
+                radius=wick_diameter / 2,
+                height=wick_height,
+                sections=32,
+            )
+            # Move wick to the correct position
+            wick.apply_translation([wick_x, wick_y, wick_center_z])
+            log_time(f"Create wick at ({wick_x:.1f}, {wick_y:.1f}, z={wick_z:.1f})")
+
         # Combine all parts
         parts = [mesh, base_plate]
         if groove is not None:
             parts.append(groove)
         if walls is not None:
             parts.append(walls)
+        if wick is not None:
+            parts.append(wick)
 
         combined = trimesh.util.concatenate(parts)
         log_time("Combine meshes")

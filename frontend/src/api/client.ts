@@ -97,6 +97,9 @@ export async function generateMold(
       max_width: settings.maxWidth,
       max_height: settings.maxHeight,
       max_depth: settings.maxDepth,
+      wick_enabled: settings.wickEnabled,
+      wick_diameter: settings.wickDiameter,
+      wick_length: settings.wickLength,
     }),
   });
 

@@ -34,6 +34,9 @@ class MoldGenerationInput(BaseModel):
     max_width: float = Field(default=100.0, ge=20.0, le=300.0, description="Maximum width in mm")
     max_height: float = Field(default=100.0, ge=20.0, le=300.0, description="Maximum height in mm")
     max_depth: float = Field(default=30.0, ge=10.0, le=100.0, description="Maximum depth in mm")
+    wick_enabled: bool = Field(default=True, description="Include wick hole in the mold")
+    wick_diameter: float = Field(default=1.5, ge=1.0, le=10.0, description="Wick hole diameter in mm")
+    wick_length: float = Field(default=10.0, ge=5.0, le=200.0, description="Wick hole length in mm")
 
 
 class PromptTemplate(BaseModel):

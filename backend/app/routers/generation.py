@@ -85,6 +85,9 @@ async def generate_mold(input_data: MoldGenerationInput):
             max_width=input_data.max_width,
             max_height=input_data.max_height,
             max_depth=input_data.max_depth,
+            wick_enabled=input_data.wick_enabled,
+            wick_diameter=input_data.wick_diameter,
+            wick_length=input_data.wick_length,
         )
         return Response(
             content=stl_data,
