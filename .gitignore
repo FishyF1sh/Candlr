@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+.venv/
+
+# Build outputs
+frontend/dist/
+__pycache__/
+*.pyc
+
+# Environment files
+.env
+
+# IDE
+.idea/
+
+# Logs
+*.log
+backend/image_logs/
+
+# OS
+.DS_Store
