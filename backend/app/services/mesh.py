@@ -111,8 +111,8 @@ class MeshService:
         max_height: float = 100.0,
         max_depth: float = 30.0,
         wick_enabled: bool = True,
-        wick_diameter: float = 3.0,
-        wick_length: float = 50.0,
+        wick_diameter: float = 1.5,
+        wick_length: float = 10.0,
     ) -> bytes:
         """
         Fast STL mold generation using vectorized numpy operations.
@@ -182,13 +182,36 @@ class MeshService:
         wall_top_z = max_z + wall_thickness
         base_z = 0  # Base at z=0
 
+        center_x = (min_x + max_x) / 2
+        center_y = (min_y + max_y) / 2
+
+        # Calculate wick position and adjust wall height if needed BEFORE creating walls
+        wick = None
+        wick_x, wick_y, wick_z = center_x, center_y, 0
+        if wick_enabled:
+            # Place wick at the center of the mesh
+            wick_x = center_x
+            wick_y = center_y
+
+            # Get the z value at the center from the mesh vertices
+            # Find vertices closest to center
+            vertices = mesh.vertices
+            distances = np.sqrt((vertices[:, 0] - center_x)**2 + (vertices[:, 1] - center_y)**2)
+            closest_idx = np.argmin(distances)
+            wick_z = vertices[closest_idx, 2]
+
+            # Calculate required wick top position
+            wick_top_z = wick_z + wick_length
+
+            # Update wall height if wick extends beyond current wall height
+            if wick_top_z > wall_top_z:
+                wall_top_z = wick_top_z + wall_thickness
+                print(f"[Mesh] Extended wall height to {wall_top_z:.1f}mm to accommodate wick")
+
         # Total mold dimensions including groove
         total_width = (max_x - min_x) + (groove_offset + groove_width) * 2 + wall_thickness * 2
         total_height = (max_y - min_y) + (groove_offset + groove_width) * 2 + wall_thickness * 2
         total_depth = wall_top_z + wall_thickness  # Add base thickness
-
-        center_x = (min_x + max_x) / 2
-        center_y = (min_y + max_y) / 2
 
         # Create base plate
         base_plate = trimesh.creation.box(
@@ -234,7 +257,7 @@ class MeshService:
             print(f"[Mesh] Groove boolean failed: {e}")
             groove = None
 
-        # Create outer walls
+        # Create outer walls (using potentially extended wall_top_z)
         outer_box = trimesh.creation.box(
             extents=[total_width, total_height, wall_top_z],
             transform=trimesh.transformations.translation_matrix([
@@ -259,16 +282,11 @@ class MeshService:
             print(f"[Mesh] Walls boolean failed: {e}")
             walls = None
 
-        # Create wick hole (cylinder that will create a hole for the wick)
-        wick = None
+        # Create wick cylinder now that wall height is finalized
         if wick_enabled:
-            # Find the best position for the wick (high z-value near center)
-            wick_x, wick_y, wick_z = self._find_wick_position(depth_map, scale_xy, scale_z)
-
-            # Create a cylinder for the wick
-            # The cylinder goes from below the base plate to above the relief surface
+            # The cylinder goes from below the base plate through the relief
             wick_bottom_z = -wall_thickness - 1  # Below base plate
-            wick_top_z = min(wick_z + wick_length, wall_top_z)  # Up to wick length or wall top
+            wick_top_z = wick_z + wick_length  # Extend wick_length above the attachment point
 
             wick_height = wick_top_z - wick_bottom_z
             wick_center_z = (wick_bottom_z + wick_top_z) / 2
@@ -280,7 +298,7 @@ class MeshService:
             )
             # Move wick to the correct position
             wick.apply_translation([wick_x, wick_y, wick_center_z])
-            log_time(f"Create wick at ({wick_x:.1f}, {wick_y:.1f}, z={wick_z:.1f})")
+            log_time(f"Create wick at center ({wick_x:.1f}, {wick_y:.1f}, z={wick_z:.1f})")
 
         # Combine all parts
         parts = [mesh, base_plate]

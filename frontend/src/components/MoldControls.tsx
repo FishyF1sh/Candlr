@@ -41,6 +41,9 @@ function Slider({ label, value, min, max, step, unit, onChange, disabled }: Slid
                    [&::-webkit-slider-thumb]:bg-terracotta [&::-webkit-slider-thumb]:rounded-full
                    [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer
                    [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110
+                   [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5
+                   [&::-moz-range-thumb]:bg-terracotta [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0
+                   [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer
                    disabled:opacity-50 disabled:cursor-not-allowed"
       />
     </div>
@@ -57,24 +60,24 @@ interface ToggleProps {
 
 function Toggle({ label, description, checked, onChange, disabled }: ToggleProps) {
   return (
-    <label className="flex items-start gap-3 cursor-pointer group">
+    <label className={`flex items-start gap-3 cursor-pointer group ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
       <div className="relative mt-0.5">
         <input
           type="checkbox"
           checked={checked}
           onChange={(e) => onChange(e.target.checked)}
           disabled={disabled}
-          className="sr-only peer"
+          className="sr-only"
         />
         <div
-          className="w-10 h-6 bg-warm-gray/30 rounded-full
-                      peer-checked:bg-terracotta peer-disabled:opacity-50
-                      transition-colors duration-200"
+          className={`w-10 h-6 rounded-full transition-colors duration-200 ${
+            checked ? 'bg-terracotta' : 'bg-warm-gray/30'
+          }`}
         />
         <div
-          className="absolute left-1 top-1 w-4 h-4 bg-cream rounded-full shadow
-                      peer-checked:translate-x-4 peer-disabled:opacity-50
-                      transition-transform duration-200"
+          className={`absolute left-1 top-1 w-4 h-4 bg-cream rounded-full shadow transition-transform duration-200 ${
+            checked ? 'translate-x-4' : ''
+          }`}
         />
       </div>
       <div className="flex-1">
